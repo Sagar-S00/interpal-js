@@ -80,7 +80,7 @@ const createUser = (payload: UserData, state?: InterpalState | null): User => {
   if (state) {
     return state.createUser(payload);
   }
-  return new User(payload);
+  throw new Error('Cannot create User in event without InterpalState. This is a legacy API limitation.');
 };
 
 export class ThreadNewMessageEvent extends BaseModel<ThreadNewMessageEventPayload> {

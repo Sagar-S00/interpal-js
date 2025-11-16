@@ -21,6 +21,7 @@ export interface WebSocketConfig {
   heartbeatIntervalMs?: number;
   pongTimeoutMs?: number;
   reconnectDelayMs?: number;
+  intents?: number;
 }
 
 type GatewayMessage = {
@@ -52,6 +53,7 @@ export class WebSocketClient extends EventEmitter {
   private pingInterval: number;
   private readonly pongTimeout: number;
   private readonly reconnectDelay: number;
+  private readonly intents?: number;
 
   private ws: WebSocket | null = null;
   private reconnectTimer?: NodeJS.Timeout;
@@ -70,6 +72,7 @@ export class WebSocketClient extends EventEmitter {
     this.pingInterval = config.heartbeatIntervalMs ?? PING_INTERVAL_MS;
     this.pongTimeout = config.pongTimeoutMs ?? PONG_TIMEOUT_MS;
     this.reconnectDelay = config.reconnectDelayMs ?? 0;
+    this.intents = config.intents;
   }
 
   async connect(): Promise<void> {
@@ -83,7 +86,13 @@ export class WebSocketClient extends EventEmitter {
     }
 
     this.manualClose = false;
-    const url = `${WEBSOCKET_URL}?token=${encodeURIComponent(token)}`;
+    let url = `${WEBSOCKET_URL}?token=${encodeURIComponent(token)}`;
+    
+    // Add intents to URL if specified
+    if (this.intents !== undefined) {
+      url += `&intents=${this.intents}`;
+    }
+    
     await this.openSocket(url, this.auth.getHeaders());
   }
 
@@ -289,6 +298,10 @@ export class WebSocketClient extends EventEmitter {
       return;
     }
 
+    // Emit a generic dispatch event for the client to handle
+    this.emit('dispatch', type, data);
+
+    // Also emit the legacy mapped events for backward compatibility
     const eventName = this.mapEvent(type);
     const payload = { ...data, event: type, type };
     const enriched = this.transformPayload(type, payload);

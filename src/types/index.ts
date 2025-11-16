@@ -39,6 +39,8 @@ export interface InterpalClientOptions {
   cacheUsers?: boolean;
   cacheThreads?: boolean;
   weakReferences?: boolean;
+  /** Gateway intents to subscribe to. Can be a number, array of numbers/strings, or intent names */
+  intents?: import('../util/Intents.js').IntentResolvable;
 }
 
 export interface RequestOptions {
@@ -61,4 +63,5 @@ export interface UserSummary {
 }
 
 export type { ThreadNewMessageEvent, ThreadTypingEvent, CounterUpdateEvent, ProfileViewEvent } from '../models/events.js';
+export type { IntentResolvable } from '../util/Intents.js';
 

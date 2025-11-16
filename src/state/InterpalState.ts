@@ -1,6 +1,7 @@
 import { LRUCache } from 'lru-cache';
 import type { EventEmitter } from 'events';
 import type { HttpClient } from '../http/HttpClient.js';
+import type { InterpalClient } from '../client/InterpalClient.js';
 import { User, type UserData } from '../models/User.js';
 import { Thread, type ThreadData } from '../models/Thread.js';
 import { Message, type MessageData } from '../models/Message.js';
@@ -17,6 +18,7 @@ export interface StateOptions {
 export class InterpalState {
   private readonly dispatch: EventEmitter | null;
   private httpClient: HttpClient | null;
+  private client: InterpalClient | null = null;
   private readonly cacheUsers: boolean;
   private readonly cacheThreads: boolean;
   private readonly weakReferences: boolean;
@@ -64,6 +66,10 @@ export class InterpalState {
     return this.httpClient;
   }
 
+  setClient(client: InterpalClient): void {
+    this.client = client;
+  }
+
   clearCaches(): void {
     this.messageCache.clear();
     this.photoCache.clear();
@@ -78,20 +84,24 @@ export class InterpalState {
   }
 
   createUser(data: UserData): User {
+    if (!this.client) {
+      throw new Error('InterpalState requires a client instance. Call setClient() first.');
+    }
+
     if (!this.cacheUsers || !data?.id) {
-      return new User(data);
+      return new User(this.client, data);
     }
 
     const key = data.id.toString();
     if (this.userCache.has(key)) {
       const user = this.userCache.get(key)!;
-      user.update(data);
+      user._patch(data);
       this.stats.cache_hits += 1;
       this.stats.objects_updated += 1;
       return user;
     }
 
-    const user = new User(data);
+    const user = new User(this.client, data);
     this.userCache.set(key, user);
     this.stats.cache_misses += 1;
     this.stats.objects_created += 1;
@@ -103,18 +113,22 @@ export class InterpalState {
   }
 
   createThread(data: ThreadData): Thread {
+    if (!this.client) {
+      throw new Error('InterpalState requires a client instance. Call setClient() first.');
+    }
+
     if (!this.cacheThreads || !data?.id) {
-      return new Thread(data);
+      return new Thread(this.client, data);
     }
     const key = data.id.toString();
     if (this.threadCache.has(key)) {
       const thread = this.threadCache.get(key)!;
-      thread.update(data);
+      thread._patch(data);
       this.stats.cache_hits += 1;
       this.stats.objects_updated += 1;
       return thread;
     }
-    const thread = new Thread(data);
+    const thread = new Thread(this.client, data);
     this.threadCache.set(key, thread);
     this.stats.cache_misses += 1;
     this.stats.objects_created += 1;
@@ -122,19 +136,23 @@ export class InterpalState {
   }
 
   createMessage(data: MessageData): Message {
+    if (!this.client) {
+      throw new Error('InterpalState requires a client instance. Call setClient() first.');
+    }
+
     if (!data?.id) {
-      return new Message(data);
+      return new Message(this.client, data);
     }
     const key = data.id.toString();
     if (this.messageCache.has(key)) {
       const message = this.messageCache.get(key) as Message;
-      message.update(data);
+      message._patch(data);
       this.messageCache.set(key, message);
       this.stats.cache_hits += 1;
       this.stats.objects_updated += 1;
       return message;
     }
-    const message = new Message(data);
+    const message = new Message(this.client, data);
     this.messageCache.set(key, message);
     this.stats.cache_misses += 1;
     this.stats.objects_created += 1;

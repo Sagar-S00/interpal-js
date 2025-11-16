@@ -7,18 +7,27 @@ export class MessagesAPI extends BaseAPI {
   async getThreads(limit = 50, offset = 0): Promise<Thread[]> {
     const data = await this.http.get<ThreadData[] | { threads?: ThreadData[] }>('/v1/thread', { limit, offset });
     const threads = (Array.isArray(data) ? data : data?.threads ?? []) as ThreadData[];
-    return threads.map((entry) => this.state?.createThread(entry) ?? new Thread(entry));
+    if (!this.client) {
+      throw new Error('MessagesAPI requires a client instance');
+    }
+    return threads.map((entry) => this.state?.createThread?.(entry) ?? new Thread(this.client!, entry));
   }
 
   async getUserThread(userId: string, includeRelation = false): Promise<Thread> {
     const data = await this.http.get<ThreadData>(`/v1/thread/user/${userId}`, { include_relation: includeRelation });
-    return this.state?.createThread(data) ?? new Thread(data);
+    if (!this.client) {
+      throw new Error('MessagesAPI requires a client instance');
+    }
+    return this.state?.createThread?.(data) ?? new Thread(this.client, data);
   }
 
   async getThreadMessages(threadId: string, params: RequestParams = {}): Promise<Message[]> {
     const data = await this.http.get<MessageData[] | { messages?: MessageData[] }>(`/v1/thread/${threadId}`, params);
     const messages = (Array.isArray(data) ? data : data?.messages ?? []) as MessageData[];
-    return messages.map((entry) => this.state?.createMessage(entry) ?? new Message(entry));
+    if (!this.client) {
+      throw new Error('MessagesAPI requires a client instance');
+    }
+    return messages.map((entry) => this.state?.createMessage?.(entry) ?? new Message(this.client!, entry));
   }
 
   async sendMessage(threadId: string, content: string, extra: Record<string, unknown> = {}): Promise<Message> {
@@ -28,7 +37,10 @@ export class MessagesAPI extends BaseAPI {
       ...extra,
     };
     const data = await this.http.post<MessageData>('/v1/message', payload);
-    return this.state?.createMessage(data) ?? new Message(data);
+    if (!this.client) {
+      throw new Error('MessagesAPI requires a client instance');
+    }
+    return this.state?.createMessage?.(data) ?? new Message(this.client, data);
   }
 
   async sendGif(threadId: string, gifUrl: string, tmpId = 'tmp'): Promise<Message> {
@@ -50,7 +62,10 @@ export class MessagesAPI extends BaseAPI {
       payload.tmp_id = tmpId;
     }
     const data = await this.http.post<MessageData>('/v1/message', payload);
-    return this.state?.createMessage(data) ?? new Message(data);
+    if (!this.client) {
+      throw new Error('MessagesAPI requires a client instance');
+    }
+    return this.state?.createMessage?.(data) ?? new Message(this.client, data);
   }
 
   async setTyping(threadId: string, typing = true): Promise<void> {
