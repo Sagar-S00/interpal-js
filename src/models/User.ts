@@ -18,7 +18,7 @@ export interface UserData {
   [key: string]: unknown;
 }
 
-export class User extends Base {
+export class User extends Base<UserData> {
   id?: string;
   name?: string;
   username?: string;
@@ -56,7 +56,7 @@ export class User extends Base {
     return this;
   }
 
-  toJSON(): Record<string, any> {
+  toJSON(): Record<string, unknown> {
     return {
       id: this.id,
       name: this.name,

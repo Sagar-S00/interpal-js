@@ -26,11 +26,12 @@ export abstract class BaseManager<K, V> {
   }
 
   /**
-   * Gets the HTTP client from the main client
-   * @returns The HTTP client instance
+   * Gets the HTTP client from the parent client instance.
+   *
+   * @returns The shared HTTP client
    */
   protected get http(): HttpClient {
-    return (this.client as any).http;
+    return this.client._httpClient;
   }
 
   /**

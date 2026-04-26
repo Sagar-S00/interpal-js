@@ -1,5 +1,8 @@
 import { BaseAPI } from './BaseAPI.js';
 
+/**
+ * @deprecated Use `client.notifications` (NotificationManager) instead.
+ */
 export class NotificationsAPI extends BaseAPI {
   async getNotifications(limit = 20, offset = 0) {
     return this.http.get('/v1/notification', { limit, offset });

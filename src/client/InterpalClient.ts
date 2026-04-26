@@ -11,6 +11,7 @@ import { NotificationManager } from '../managers/NotificationManager.js';
 import type { InterpalClientOptions, SessionPayload } from '../types/index.js';
 import { DEFAULT_USER_AGENT } from '../constants.js';
 import { Intents } from '../util/Intents.js';
+import { ValidationError } from '../errors.js';
 
 // Legacy API imports for backward compatibility
 import { SearchAPI } from '../api/SearchAPI.js';
@@ -43,14 +44,19 @@ export class InterpalClient extends EventEmitter {
   readonly realtime: RealtimeAPI;
   readonly posts: PostsAPI;
 
-  private readonly options: InterpalClientOptions;
   private readonly username?: string;
   private readonly password?: string;
   private readonly intents: number;
+  protected readonly options: InterpalClientOptions;
+
+  /** @internal Exposes the HTTP client for managers without breaking encapsulation. */
+  get _httpClient(): HttpClient {
+    return this.http;
+  }
 
   constructor(options: InterpalClientOptions = {}) {
     super();
-    
+
     this.options = options;
     this.username = options.username;
     this.password = options.password;
@@ -67,7 +73,6 @@ export class InterpalClient extends EventEmitter {
       maxMessages: options.maxMessages,
       cacheUsers: options.cacheUsers,
       cacheThreads: options.cacheThreads,
-      weakReferences: options.weakReferences,
     });
 
     this.http = new HttpClient(this.auth);
@@ -121,7 +126,7 @@ export class InterpalClient extends EventEmitter {
     const user = username ?? this.username;
     const pwd = password ?? this.password;
     if (!user || !pwd) {
-      throw new Error('Username and password required for login');
+      throw new ValidationError('Username and password required for login');
     }
 
     const session = await this.auth.login(user, pwd);
@@ -236,14 +241,14 @@ export class InterpalClient extends EventEmitter {
    * @param data The event data
    * @private
    */
-  private _handleDispatch(event: string, data: any): void {
+  private _handleDispatch(event: string, data: unknown): void {
     try {
       switch (event) {
-        case 'THREAD_NEW_MESSAGE':
-          const message = this.messages._handleMessageCreate(data);
+        case 'THREAD_NEW_MESSAGE': {
+          const message = this.messages._handleMessageCreate(data as import('../models/Message.js').MessageData);
           this.emit('messageCreate', message);
           break;
-
+        }
         case 'THREAD_TYPING':
           this.emit('typingStart', data);
           break;
@@ -257,11 +262,10 @@ export class InterpalClient extends EventEmitter {
           break;
 
         default:
-          // Emit unknown events with their raw data
           this.emit(event.toLowerCase(), data);
       }
     } catch (error) {
-      this.emit('error', new Error(`Error handling dispatch event ${event}: ${error}`));
+      this.emit('error', error instanceof Error ? error : new Error(String(error)));
     }
   }
 

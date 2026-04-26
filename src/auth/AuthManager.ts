@@ -54,7 +54,8 @@ export class AuthManager {
 
       this.sessionCookie = cookie;
       this.authToken = response.data?.auth_token ?? response.data?.token ?? null;
-      this.botId = this.extractBotId(response.data);
+      const payload = response.data && typeof response.data === 'object' ? response.data as Record<string, unknown> : {};
+      this.botId = this.extractBotId(payload);
 
       return {
         sessionCookie: this.sessionCookie,
@@ -177,7 +178,7 @@ export class AuthManager {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private extractBotId(payload: any): string | null {
+  private extractBotId(payload: Record<string, unknown>): string | null {
     if (!payload || typeof payload !== 'object') {
       return null;
     }
@@ -193,8 +194,9 @@ export class AuthManager {
 
     const nestedKeys = ['bot', 'user', 'account', 'profile', 'data'];
     for (const nestedKey of nestedKeys) {
-      if (payload[nestedKey]) {
-        const nestedValue = this.extractBotId(payload[nestedKey]);
+      const nested = payload[nestedKey];
+      if (nested && typeof nested === 'object') {
+        const nestedValue = this.extractBotId(nested as Record<string, unknown>);
         if (nestedValue) {
           return nestedValue;
         }

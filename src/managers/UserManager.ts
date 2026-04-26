@@ -2,6 +2,7 @@ import { BaseManager } from './BaseManager.js';
 import { User, type UserData } from '../models/User.js';
 import type { InterpalClient } from '../client/InterpalClient.js';
 import type { RequestParams } from '../types/index.js';
+import { normalizeList } from '../utils/normalize.js';
 
 /**
  * Manages user-related data and operations.
@@ -86,16 +87,8 @@ export class UserManager extends BaseManager<string, User> {
    * @returns Array of matching users
    */
   async search(params: RequestParams = {}): Promise<User[]> {
-    const data = await this.http.get<UserData[] | { results?: UserData[] }>('/v1/search/user', params);
-    
-    let results: UserData[];
-    if (Array.isArray(data)) {
-      results = data;
-    } else if (data && 'results' in data && Array.isArray(data.results)) {
-      results = data.results;
-    } else {
-      results = [];
-    }
+    const data = await this.http.get<unknown>('/v1/search/user', params);
+    const results = normalizeList<UserData>(data, 'results');
 
     return results.map((userData) => {
       const user = new User(this.client, userData);

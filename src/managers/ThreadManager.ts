@@ -1,6 +1,7 @@
 import { BaseManager } from './BaseManager.js';
 import { Thread, type ThreadData } from '../models/Thread.js';
 import type { InterpalClient } from '../client/InterpalClient.js';
+import { normalizeList } from '../utils/normalize.js';
 
 /**
  * Manages thread (conversation) data and operations.
@@ -43,16 +44,8 @@ export class ThreadManager extends BaseManager<string, Thread> {
   async fetchAll(options: { limit?: number; offset?: number; force?: boolean; cache?: boolean } = {}): Promise<Thread[]> {
     const { limit = 50, offset = 0, cache = true } = options;
 
-    const data = await this.http.get<ThreadData[] | { threads?: ThreadData[] }>('/v1/thread', { limit, offset });
-    
-    let threadDataArray: ThreadData[];
-    if (Array.isArray(data)) {
-      threadDataArray = data;
-    } else if (data && 'threads' in data && Array.isArray(data.threads)) {
-      threadDataArray = data.threads;
-    } else {
-      threadDataArray = [];
-    }
+    const data = await this.http.get<unknown>('/v1/thread', { limit, offset });
+    const threadDataArray = normalizeList<ThreadData>(data, 'threads');
 
     return threadDataArray.map((threadData) => this._createOrUpdate(threadData, cache));
   }

@@ -13,7 +13,7 @@ export interface MessageData {
   [key: string]: unknown;
 }
 
-export class Message extends Base {
+export class Message extends Base<MessageData> {
   id?: string;
   threadId?: string;
   senderId?: string;
@@ -42,7 +42,7 @@ export class Message extends Base {
     return this;
   }
 
-  toJSON(): Record<string, any> {
+  toJSON(): Record<string, unknown> {
     return {
       id: this.id,
       threadId: this.threadId,

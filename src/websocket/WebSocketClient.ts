@@ -241,12 +241,10 @@ export class WebSocketClient extends EventEmitter {
   }
 
   private handleMessage(raw: WebSocket.Data) {
-    // console.log('handleMessage', raw);
     let payload: GatewayMessage;
 
     try {
       payload = JSON.parse(raw.toString());
-      // console.log('payload', payload);
     } catch {
       this.emit('raw', raw);
       return;
@@ -308,11 +306,6 @@ export class WebSocketClient extends EventEmitter {
     this.emit(eventName, enriched);
   }
 
-  private getStringField(obj: Record<string, unknown>, key: string): string | undefined {
-    const value = obj[key];
-    return typeof value === 'string' ? value : undefined;
-  }
-
   private mapEvent(type: string): string {
     switch (type) {
       case 'THREAD_NEW_MESSAGE':
@@ -331,7 +324,6 @@ export class WebSocketClient extends EventEmitter {
   private transformPayload(type: string, data: Record<string, unknown>): unknown {
     switch (type) {
       case 'THREAD_NEW_MESSAGE':
-        // console.log('THREAD_NEW_MESSAGE', data);
         return new ThreadNewMessageEvent(data, { state: this.state ?? undefined });
       case 'THREAD_TYPING':
         return new ThreadTypingEvent(data, { state: this.state ?? undefined });

@@ -4,6 +4,7 @@ import type { InterpalClient } from '../client/InterpalClient.js';
 import type { Message } from './Message.js';
 import type { User } from './User.js';
 import { Collection } from '../util/Collection.js';
+import type { RequestParams } from '../types/index.js';
 
 export interface ThreadData {
   id?: string | number;
@@ -16,7 +17,7 @@ export interface ThreadData {
   [key: string]: unknown;
 }
 
-export class Thread extends Base {
+export class Thread extends Base<ThreadData> {
   id?: string;
   subject?: string;
   lastMessage?: string;
@@ -47,7 +48,7 @@ export class Thread extends Base {
     return this;
   }
 
-  toJSON(): Record<string, any> {
+  toJSON(): Record<string, unknown> {
     return {
       id: this.id,
       subject: this.subject,
@@ -86,7 +87,7 @@ export class Thread extends Base {
    * @param options Fetch options
    * @returns Array of messages
    */
-  async fetchMessages(options: Record<string, any> = {}): Promise<Message[]> {
+  async fetchMessages(options: RequestParams & { cache?: boolean } = {}): Promise<Message[]> {
     if (!this.id) {
       throw new Error('Cannot fetch messages for a thread without an ID');
     }

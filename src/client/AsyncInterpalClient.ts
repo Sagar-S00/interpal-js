@@ -16,11 +16,11 @@ export class AsyncInterpalClient extends InterpalClient {
 
     if (
       !this.isAuthenticated &&
-      this['options'].autoLogin &&
-      this['options'].username &&
-      this['options'].password
+      this.options.autoLogin &&
+      this.options.username &&
+      this.options.password
     ) {
-      await this.login(this['options'].username, this['options'].password);
+      await this.login(this.options.username, this.options.password);
     }
 
     if (!this.wsClient || !this.wsClient.isConnected) {

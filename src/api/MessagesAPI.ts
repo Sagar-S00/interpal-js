@@ -2,11 +2,16 @@ import { BaseAPI } from './BaseAPI.js';
 import { Thread, type ThreadData } from '../models/Thread.js';
 import { Message, type MessageData } from '../models/Message.js';
 import type { RequestParams } from '../types/index.js';
+import { normalizeList } from '../utils/normalize.js';
 
+/**
+ * @deprecated Use `client.messages` (MessageManager) and `client.threads` (ThreadManager) instead.
+ * This class is kept for backward compatibility.
+ */
 export class MessagesAPI extends BaseAPI {
   async getThreads(limit = 50, offset = 0): Promise<Thread[]> {
-    const data = await this.http.get<ThreadData[] | { threads?: ThreadData[] }>('/v1/thread', { limit, offset });
-    const threads = (Array.isArray(data) ? data : data?.threads ?? []) as ThreadData[];
+    const data = await this.http.get<unknown>('/v1/thread', { limit, offset });
+    const threads = normalizeList<ThreadData>(data, 'threads');
     if (!this.client) {
       throw new Error('MessagesAPI requires a client instance');
     }
@@ -22,8 +27,8 @@ export class MessagesAPI extends BaseAPI {
   }
 
   async getThreadMessages(threadId: string, params: RequestParams = {}): Promise<Message[]> {
-    const data = await this.http.get<MessageData[] | { messages?: MessageData[] }>(`/v1/thread/${threadId}`, params);
-    const messages = (Array.isArray(data) ? data : data?.messages ?? []) as MessageData[];
+    const data = await this.http.get<unknown>(`/v1/thread/${threadId}`, params);
+    const messages = normalizeList<MessageData>(data, 'messages');
     if (!this.client) {
       throw new Error('MessagesAPI requires a client instance');
     }
@@ -31,11 +36,7 @@ export class MessagesAPI extends BaseAPI {
   }
 
   async sendMessage(threadId: string, content: string, extra: Record<string, unknown> = {}): Promise<Message> {
-    const payload = {
-      thread_id: threadId,
-      message: content,
-      ...extra,
-    };
+    const payload = { thread_id: threadId, message: content, ...extra };
     const data = await this.http.post<MessageData>('/v1/message', payload);
     if (!this.client) {
       throw new Error('MessagesAPI requires a client instance');
@@ -58,9 +59,7 @@ export class MessagesAPI extends BaseAPI {
       attachment_type: 'correction',
       attachment_id: attachmentId,
     };
-    if (tmpId) {
-      payload.tmp_id = tmpId;
-    }
+    if (tmpId) payload.tmp_id = tmpId;
     const data = await this.http.post<MessageData>('/v1/message', payload);
     if (!this.client) {
       throw new Error('MessagesAPI requires a client instance');

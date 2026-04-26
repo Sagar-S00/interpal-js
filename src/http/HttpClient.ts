@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
 import axiosRetry from 'axios-retry';
 import Bottleneck from 'bottleneck';
-import { API_BASE_URL } from '../constants.js';
+import { API_BASE_URL, HTTP_DEFAULT_HEADERS } from '../constants.js';
 import { randomUserAgent } from '../utils/randomUserAgent.js';
 import {
   APIError,
@@ -52,6 +52,8 @@ export class HttpClient {
   }: RequestOptions): Promise<T> {
     const run = async () => {
       const finalHeaders: Record<string, string> = {
+        // Apply default JSON content-type for non-GET requests
+        ...(method !== 'GET' ? HTTP_DEFAULT_HEADERS : {}),
         ...this.auth.getHeaders(),
         ...(headers ?? {}),
       };
@@ -61,7 +63,6 @@ export class HttpClient {
       }
 
       try {
-        console.log('requesting', method, endpoint, data, params, finalHeaders);
         const response = await this.axiosInstance.request<T>({
           method,
           url: endpoint,

@@ -3,6 +3,7 @@ import { Message, type MessageData } from '../models/Message.js';
 import type { InterpalClient } from '../client/InterpalClient.js';
 import type { RequestParams } from '../types/index.js';
 import { MessageBuilder, type MessagePayload } from '../builders/MessageBuilder.js';
+import { normalizeList } from '../utils/normalize.js';
 
 /**
  * Manages message data and operations.
@@ -21,16 +22,8 @@ export class MessageManager extends BaseManager<string, Message> {
   async fetchThreadMessages(threadId: string, options: RequestParams & { cache?: boolean } = {}): Promise<Message[]> {
     const { cache = true, ...params } = options;
 
-    const data = await this.http.get<MessageData[] | { messages?: MessageData[] }>(`/v1/thread/${threadId}`, params);
-    
-    let messageDataArray: MessageData[];
-    if (Array.isArray(data)) {
-      messageDataArray = data;
-    } else if (data && 'messages' in data && Array.isArray(data.messages)) {
-      messageDataArray = data.messages;
-    } else {
-      messageDataArray = [];
-    }
+    const data = await this.http.get<unknown>(`/v1/thread/${threadId}`, params);
+    const messageDataArray = normalizeList<MessageData>(data, 'messages');
 
     return messageDataArray.map((messageData) => this._createOrUpdate(messageData, cache));
   }

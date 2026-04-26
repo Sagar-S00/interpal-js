@@ -1,58 +1,61 @@
 import type { InterpalClient } from '../client/InterpalClient.js';
 
 /**
- * Base class for all Interpal data models.
- * Provides a common interface and access to the client instance.
+ * Base class for all Interpal data models (User, Message, Thread, …).
+ *
+ * Provides a reference to the client, identity helpers, and enforces a
+ * consistent `_patch` / `toJSON` contract across every model class.
+ *
+ * @typeParam TData - The raw API data shape that this model wraps.
  */
-export abstract class Base {
+export abstract class Base<TData extends Record<string, unknown> = Record<string, unknown>> {
   /**
-   * Reference to the client that instantiated this model
+   * Reference to the client that instantiated this model.
    */
   public readonly client: InterpalClient;
 
-  /**
-   * @param client The client that instantiated this model
-   */
+  /** @param client - The client that instantiated this model */
   constructor(client: InterpalClient) {
     this.client = client;
   }
 
   /**
-   * Updates this object with new data.
-   * @param data The raw data to patch this object with
-   * @returns This object for chaining
+   * Merges new raw API data into this model instance in-place.
+   *
+   * @param data - Raw data from the API to merge
+   * @returns `this` for method chaining
    */
-  abstract _patch(data: any): this;
+  abstract _patch(data: TData): this;
 
   /**
-   * Converts this object to a plain JSON object.
-   * @returns The JSON representation of this object
+   * Serialises the model to a plain JSON-compatible object.
+   *
+   * @returns A plain representation of this model
    */
-  abstract toJSON(): Record<string, any>;
+  abstract toJSON(): Record<string, unknown>;
 
   /**
-   * When concatenated with a string, this automatically returns the object's name or ID.
-   * @returns A string representation of this object
+   * When concatenated with a string, returns a human-readable identifier.
    */
   toString(): string {
     return `[${this.constructor.name}]`;
   }
 
   /**
-   * Returns a shallow clone of this object.
-   * @returns A new instance with the same data
+   * Returns a shallow clone of this model instance.
    */
   clone(): this {
     return Object.assign(Object.create(Object.getPrototypeOf(this)), this);
   }
 
   /**
-   * Checks if this object is equal to another object.
-   * @param other The object to compare with
-   * @returns Whether the objects are considered equal
+   * Checks referential equality with another model.
+   *
+   * @param other - The model to compare against
    */
   equals(other: Base): boolean {
     return this === other;
   }
 }
+
 
