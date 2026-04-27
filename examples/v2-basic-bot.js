@@ -1,26 +1,43 @@
 /**
  * Interpal-JS v2 Basic Bot Example
- * 
- * This example demonstrates the new v2 API architecture.
+ *
+ * Demonstrates the v2 manager-based API with the built-in payload-discovery
+ * helper for inspecting real gateway frames.
+ *
+ * Environment variables:
+ *   INTERPAL_USERNAME  – your Interpals username
+ *   INTERPAL_PASSWORD  – your Interpals password
+ *   DISCOVER_PAYLOADS  – set to "1" to record raw WS frames to a JSONL file
+ *                        (useful for confirming gateway field names)
  */
 
 import { InterpalClient, Intents, MessageBuilder } from 'interpal-js';
 
-// Create client with intents
+// ─── Client ──────────────────────────────────────────────────────────────────
 const client = new InterpalClient({
-  username: process.env.INTERPAL_USERNAME,
-  password: process.env.INTERPAL_PASSWORD,
+  username: 'ainzz01',
+  password: 'sagar890@',
   autoLogin: true,
-  // Only subscribe to events we need
+
+  // Subscribe only to the events we need (reduces server load).
   intents: [
     Intents.FLAGS.MESSAGES,
     Intents.FLAGS.TYPING,
   ],
+
+  // Set DISCOVER_PAYLOADS=1 in your environment to write every raw gateway
+  // frame to `interpal-payloads.jsonl` in the current working directory.
+  // Inspect that file to confirm real protocol field names, then remove this.
+  discoverPayloads: true,
 });
 
-// Lifecycle events
+
+// ─── Lifecycle events ─────────────────────────────────────────────────────────
 client.on('ready', () => {
   console.log('✅ Bot is ready and connected!');
+  if (process.env.DISCOVER_PAYLOADS === '1') {
+    console.log('🔍 Payload discovery is ON — raw frames are being written to interpal-payloads.jsonl');
+  }
 });
 
 client.on('disconnect', ({ code, reason }) => {
@@ -31,7 +48,7 @@ client.on('error', (error) => {
   console.error('❌ Error:', error);
 });
 
-// Message event
+// ─── Message events ──────────────────────────────────────────────────────────
 client.on('messageCreate', async (message) => {
   // Ignore messages from self
   const self = await client.users.fetchSelf();
@@ -39,7 +56,6 @@ client.on('messageCreate', async (message) => {
 
   console.log(`📨 New message from ${message.author?.username}: ${message.content}`);
 
-  // Command handling
   if (!message.content) return;
 
   if (message.content === '!ping') {
@@ -50,7 +66,7 @@ client.on('messageCreate', async (message) => {
     const builder = new MessageBuilder()
       .setContent('👋 Hello! I\'m a bot running on Interpal-JS v2!')
       .setReplyTo(message.id);
-    
+
     await client.messages.send(message.threadId, builder);
   }
 
@@ -77,12 +93,12 @@ client.on('messageCreate', async (message) => {
   else if (message.content === '!threads') {
     const threads = await client.threads.fetchAll({ limit: 5 });
     const unread = threads.filter(t => t.unread);
-    
+
     await message.reply(
       `📬 Recent threads:\n` +
       `Total: ${threads.length}\n` +
       `Unread: ${unread.length}\n` +
-      threads.slice(0, 5).map(t => 
+      threads.slice(0, 5).map(t =>
         `${t.unread ? '🔴' : '⚪'} ${t.subject || 'No subject'}`
       ).join('\n')
     );
@@ -91,22 +107,43 @@ client.on('messageCreate', async (message) => {
   else if (message.content === '!help') {
     await message.reply(
       `🤖 Available commands:\n` +
-      `!ping - Check if bot is responsive\n` +
-      `!hello - Get a greeting\n` +
-      `!author - Get author information\n` +
-      `!cache - View cache statistics\n` +
-      `!threads - List recent threads\n` +
-      `!help - Show this message`
+      `!ping    – Check if bot is responsive\n` +
+      `!hello   – Get a greeting\n` +
+      `!author  – Get info about message author\n` +
+      `!cache   – View cache statistics\n` +
+      `!threads – List recent threads\n` +
+      `!help    – Show this message`
     );
   }
 });
 
-// Typing event
+// ─── Typing events ───────────────────────────────────────────────────────────
 client.on('typingStart', (data) => {
-  console.log('⌨️ Someone is typing...');
+  console.log('⌨️  Someone is typing in thread', data.threadId ?? data.thread_id ?? '(unknown)');
 });
 
-// Start the bot
+// ─── Notification events ─────────────────────────────────────────────────────
+client.on('notificationUpdate', (data) => {
+  console.log('🔔 Counter update:', data);
+});
+
+// ─── Profile view events ─────────────────────────────────────────────────────
+client.on('profileView', (data) => {
+  console.log('👁️  Profile viewed by:', data.username ?? data.viewer ?? '(unknown)');
+});
+
+// ─── Raw dispatch (advanced) ─────────────────────────────────────────────────
+// Fires for every gateway event *before* it is routed to the named handlers
+// above.  Useful for handling event types that don't have a dedicated listener.
+client.on('dispatch', (eventType, data) => {
+  // Only log unhandled events to avoid noise.
+  const handled = new Set(['THREAD_NEW_MESSAGE', 'THREAD_TYPING', 'COUNTER_UPDATE', 'PROFILE_VIEW']);
+  if (!handled.has(eventType)) {
+    console.log(`[dispatch] Unknown event type: ${eventType}`, data);
+  }
+});
+
+// ─── Start / shutdown ────────────────────────────────────────────────────────
 async function start() {
   try {
     await client.initialize();
@@ -118,7 +155,6 @@ async function start() {
   }
 }
 
-// Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\n🛑 Shutting down...');
   await client.disconnect();

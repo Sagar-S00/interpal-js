@@ -160,7 +160,11 @@ export class InterpalClient extends EventEmitter {
    */
   async connect(): Promise<void> {
     if (!this.wsClient) {
-      this.wsClient = new WebSocketClient(this.auth, { intents: this.intents }, { state: this.state });
+      this.wsClient = new WebSocketClient(
+        this.auth,
+        { intents: this.intents, discoverPayloads: this.options.discoverPayloads },
+        { state: this.state },
+      );
       this._setupWebSocketListeners();
     }
     await this.wsClient.connect();
@@ -243,26 +247,52 @@ export class InterpalClient extends EventEmitter {
    */
   private _handleDispatch(event: string, data: unknown): void {
     try {
+      const frameData = data as Record<string, unknown>;
+
+      // Cache the sender/contact user that arrived in the enriched frame data.
+      const senderRaw = frameData._sender as Record<string, unknown> | undefined;
+      if (senderRaw) {
+        this.users._createOrUpdate(senderRaw as import('../models/User.js').UserData);
+      }
+
       switch (event) {
         case 'THREAD_NEW_MESSAGE': {
-          const message = this.messages._handleMessageCreate(data as import('../models/Message.js').MessageData);
+          // Strip internal bookkeeping fields before building the Message.
+          const { _sender, _counters, _entity, ...messageData } = frameData;
+          const message = this.messages._handleMessageCreate(messageData as import('../models/Message.js').MessageData);
           this.emit('messageCreate', message);
           break;
         }
+
+        case 'THREAD_SYNC_MESSAGE': {
+          // Sync of a message already in the thread (e.g. the last message
+          // when the WS connects, or a message the bot itself sent).
+          // Emit a separate event so listeners can opt in without interfering
+          // with the normal messageCreate flow.
+          const { _sender, _counters, _entity, ...messageData } = frameData;
+          const message = this.messages._handleMessageCreate(messageData as import('../models/Message.js').MessageData);
+          this.emit('messageSync', message);
+          break;
+        }
+
         case 'THREAD_TYPING':
-          this.emit('typingStart', data);
+          this.emit('typingStart', frameData);
           break;
 
         case 'COUNTER_UPDATE':
-          this.emit('notificationUpdate', data);
+          this.emit('notificationUpdate', frameData);
+          break;
+
+        case 'THREAD_VIEWED':
+          // Read-receipt notification — no public event needed.
           break;
 
         case 'PROFILE_VIEW':
-          this.emit('profileView', data);
+          this.emit('profileView', frameData);
           break;
 
         default:
-          this.emit(event.toLowerCase(), data);
+          this.emit(event.toLowerCase(), frameData);
       }
     } catch (error) {
       this.emit('error', error instanceof Error ? error : new Error(String(error)));

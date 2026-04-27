@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
 import axiosRetry from 'axios-retry';
 import Bottleneck from 'bottleneck';
-import { API_BASE_URL, HTTP_DEFAULT_HEADERS } from '../constants.js';
+import { API_BASE_URL } from '../constants.js';
 import { randomUserAgent } from '../utils/randomUserAgent.js';
 import {
   APIError,
@@ -51,9 +51,27 @@ export class HttpClient {
     headers,
   }: RequestOptions): Promise<T> {
     const run = async () => {
+      // The Interpals API expects application/x-www-form-urlencoded for
+      // POST/PUT requests (same as the login endpoint).  Convert plain
+      // objects/records to URLSearchParams; leave anything already
+      // serialisable (string, URLSearchParams, FormData) as-is.
+      let requestBody: unknown = data;
+      const isWriteMethod = method === 'POST' || method === 'PUT';
+      if (isWriteMethod && data !== undefined && data !== null) {
+        if (typeof data === 'object' && !(data instanceof URLSearchParams) && !(data instanceof FormData)) {
+          const params = new URLSearchParams();
+          for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+            if (value !== undefined && value !== null) {
+              params.append(key, String(value));
+            }
+          }
+          requestBody = params;
+        }
+      }
+
       const finalHeaders: Record<string, string> = {
-        // Apply default JSON content-type for non-GET requests
-        ...(method !== 'GET' ? HTTP_DEFAULT_HEADERS : {}),
+        // Form-encoded for write methods; no Content-Type override for GET.
+        ...(isWriteMethod ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
         ...this.auth.getHeaders(),
         ...(headers ?? {}),
       };
@@ -66,7 +84,7 @@ export class HttpClient {
         const response = await this.axiosInstance.request<T>({
           method,
           url: endpoint,
-          data,
+          data: requestBody,
           params,
           headers: finalHeaders,
         });

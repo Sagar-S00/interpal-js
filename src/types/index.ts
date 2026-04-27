@@ -55,6 +55,14 @@ export interface InterpalClientOptions {
   weakReferences?: boolean;
   /** Gateway intents to subscribe to. Can be a number, array of numbers/strings, or intent names */
   intents?: import('../util/Intents.js').IntentResolvable;
+  /**
+   * When set, every raw WebSocket gateway frame is appended to a JSONL file so
+   * you can learn the exact field names the server sends.
+   * Pass `true` to use the default path (`interpal-payloads.jsonl`), or a
+   * custom path string.  Inspect the file, update `WebSocketClient` with the
+   * real field names, then remove this option.
+   */
+  discoverPayloads?: boolean | string;
 }
 
 // ─── Domain Interfaces ───────────────────────────────────────────────────────

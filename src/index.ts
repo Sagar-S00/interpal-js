@@ -34,6 +34,7 @@ export { Collection } from './util/Collection.js';
 export { Intents, type IntentResolvable } from './util/Intents.js';
 export { normalizeList } from './utils/normalize.js';
 export { parseTimestamp } from './utils/time.js';
+export { PayloadDiscovery } from './utils/payloadDiscovery.js';
 
 // ─── Core Internals (advanced use) ───────────────────────────────────────────
 export { AuthManager } from './auth/AuthManager.js';
